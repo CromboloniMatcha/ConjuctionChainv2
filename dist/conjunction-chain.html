@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Conjunction Chain</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧩</text></svg>">
+  <style>
+/* ===== Theme tokens ===== */
+:root{
+  --bg:#f6f4ee;--bg2:#e3eafb;--card:#fff;--ink:#222;--muted:#666;--line:#555;
+  --accent:#3b6fd4;--accent2:#a45be0;--bad:#d93a3a;--badbg:#fbdcdc;
+  --sentbg:#eef3ff;--chain:#8a94a0;
+  --pink:#ffc9e0;--pinkb:#e0558f;--pinkt:#4a1630;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1d1d1b;--bg2:#222a3d;--card:#2a2a27;--ink:#eee;--muted:#aaa;--line:#bbb;
+    --accent:#7ca3f5;--badbg:#5a2424;--sentbg:#2c3550;--chain:#c4ccd6;
+    --pink:#8a3560;--pinkb:#f08ab8;--pinkt:#fff;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1d1d1b;--bg2:#222a3d;--card:#2a2a27;--ink:#eee;--muted:#aaa;--line:#bbb;
+  --accent:#7ca3f5;--badbg:#5a2424;--sentbg:#2c3550;--chain:#c4ccd6;
+  --pink:#8a3560;--pinkb:#f08ab8;--pinkt:#fff;
+}
+
+/* ===== Base ===== */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:linear-gradient(160deg,var(--bg),var(--bg2)) fixed;
+  color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  min-height:100vh;display:flex;justify-content:center;padding:20px;
+}
+main{width:100%;max-width:860px}
+h1{
+  margin:0 0 4px;font-size:1.9rem;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.sub{color:var(--muted);margin:0 0 16px}
+.bar{display:flex;justify-content:space-between;color:var(--muted);font-size:.9rem;margin-bottom:10px}
+.prog{height:8px;background:#8883;border-radius:8px;margin-bottom:12px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s}
+
+/* ===== Board ===== */
+.stage{background:var(--card);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:28px;box-shadow:0 8px 30px #0000001a}
+.chainCol{display:flex;align-items:center;justify-content:center;padding:8px 0}
+.sent{
+  flex:1 1 0;min-width:0;max-width:260px;min-height:84px;padding:16px 14px;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  font-size:1.05rem;font-weight:500;
+  background:var(--sentbg);border:2px solid var(--accent);border-radius:8px;box-shadow:0 3px 10px #0000001a;
+}
+
+/* ===== Chain links ===== */
+.chain{display:flex;align-items:center;flex:none}
+.chain span{width:34px;height:18px;border:3px solid var(--chain);border-radius:10px}
+.chain span+span{margin-left:-11px}
+
+/* ===== Drop slot ===== */
+.slot{
+  width:190px;height:84px;display:flex;align-items:center;justify-content:center;
+  border:3px dashed var(--chain);border-radius:18px;transition:background .25s,border-color .25s;
+}
+.slot.ok{border-style:solid;border-color:var(--accent);background:var(--sentbg)}
+.slot.flash{border-color:var(--bad);background:var(--badbg)}
+.slotHint{color:var(--muted);font-size:.8rem}
+.slot.ok .slotHint{display:none}
+
+/* ===== Pieces ===== */
+.tray{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.cell{width:128px;height:56px}
+.piece{
+  width:128px;height:56px;display:flex;align-items:center;justify-content:center;
+  font-weight:600;font-size:1.05rem;cursor:grab;user-select:none;touch-action:none;
+  background:var(--pink);color:var(--pinkt);border:2px solid var(--pinkb);border-radius:12px;
+  box-shadow:0 3px 0 #0002;rotate:var(--rot,0deg);
+  transition:transform .35s cubic-bezier(.3,1.3,.5,1),rotate .3s,background .25s,border-color .25s;
+}
+.piece:hover{filter:brightness(1.05)}
+.piece.drag{cursor:grabbing;box-shadow:0 8px 20px #0004;rotate:0deg;transition:none}
+.piece.bad{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
+.slot .piece{rotate:0deg;background:var(--sentbg);border-color:var(--accent);color:var(--ink);box-shadow:0 3px 10px #0000001a}
+
+/* ===== Feedback panel ===== */
+.info{margin-top:14px;min-height:96px;padding:16px;background:var(--card);border-radius:14px;border-left:6px solid var(--accent);box-shadow:0 4px 16px #0000001a}
+.info .row{margin:4px 0}
+.info b.ok{color:var(--accent)}
+.info .bad{color:var(--bad);font-weight:600}
+.found{color:var(--muted);font-size:.9rem;margin-top:8px}
+
+/* ===== Buttons & finish screen ===== */
+.actions{text-align:center;margin-top:14px}
+button.next{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px 28px;font-size:1rem;cursor:pointer}
+button.next:disabled{opacity:.4;cursor:not-allowed}
+.done{text-align:center;padding:30px}
+
+/* ===== Small screens ===== */
+@media (max-width:640px){
+  h1{font-size:1.5rem}
+  .stage{padding:12px}
+  .chain.end{display:none}
+  .chain span{width:18px;height:11px;border-width:2px}
+  .chain span+span{margin-left:-6px}
+  .sent{font-size:.75rem;padding:8px 4px;min-height:60px}
+  .slot{width:112px;height:70px}
+  .cell,.piece{width:96px;font-size:.9rem}
+  .tray{gap:8px}
+}
+
+/* ===== Header & tabs ===== */
+[hidden]{display:none!important}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.tabs{display:flex;gap:6px;background:var(--card);padding:4px;border-radius:999px;box-shadow:0 4px 16px #0000001a}
+.tab{border:0;background:transparent;color:var(--ink);padding:9px 16px;border-radius:999px;font-size:.95rem;cursor:pointer}
+.tab.active{background:var(--accent);color:#fff}
+
+/* ===== Editor ===== */
+.toolbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--card);padding:12px 14px;border-radius:14px;box-shadow:0 4px 16px #0000001a;margin-bottom:12px}
+.toolbar .status{margin-left:auto;color:var(--muted);font-size:.9rem}
+.msgbar{min-height:0;margin-bottom:10px;font-weight:600;font-size:.95rem}
+.msgbar.warn{color:var(--bad)}
+.msgbar.good{color:var(--accent)}
+.btn{background:var(--sentbg);color:var(--ink);border:1px solid var(--accent);border-radius:10px;padding:10px 16px;font-size:.95rem;cursor:pointer}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.danger,.icon.danger{color:var(--bad);border-color:var(--bad)}
+.btn.addwide{width:100%;margin-top:10px;border-style:dashed;padding:14px}
+.panel{background:var(--card);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 4px 16px #0000001a}
+.panel h2{font-size:1.1rem;margin:0 0 12px}
+.muted{color:var(--muted);font-size:.9rem}
+.qcard,.ccard{border:2px solid var(--sentbg);border-radius:12px;padding:12px;margin-bottom:10px}
+.qcard.invalid{border-color:var(--bad)}
+.qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.qtools{display:flex;gap:6px}
+.icon{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:.9rem}
+.icon:disabled{opacity:.3;cursor:not-allowed}
+.qcard label,.ccard label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:8px}
+.qcard input,.ccard input,.addrow input,#backupText{width:100%;margin-top:4px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:.95rem}
+.qcard input.invalid{border-color:var(--bad)}
+.lbl{font-size:.85rem;color:var(--muted);margin:4px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:2px solid var(--pinkb);background:transparent;color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:.9rem}
+.chip.on{background:var(--pink);color:var(--pinkt);font-weight:600}
+.addrow{display:flex;gap:8px;margin-bottom:12px}
+.addrow input{margin:0}
+.addrow .btn{white-space:nowrap}
+.empty{color:var(--muted);text-align:center;padding:12px}
+.backup summary{cursor:pointer;font-weight:600}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+#backupText{font-family:ui-monospace,Menlo,monospace;font-size:.8rem}
+@media (max-width:640px){.addrow{flex-direction:column}.toolbar .status{margin-left:0;width:100%}}
+
+</style>
+</head>
+<body>
+  <main>
+    <header class="head">
+      <div>
+        <h1>Conjunction Chain</h1>
+        <p class="sub" id="subTitle">Drag a conjunction piece into the gap to connect the two sentences.</p>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" id="tabPlay">▶ Play</button>
+        <button class="tab" id="tabEdit">✏️ Edit questions</button>
+      </nav>
+    </header>
+
+    <section id="playView">
+      <div class="bar"><span id="progress"></span><span id="tries"></span></div>
+      <div class="prog"><i id="pbar"></i></div>
+      <div class="stage" id="stage">
+        <div class="chainCol">
+          <div class="chain end"><span></span><span></span><span></span></div>
+          <div class="sent" id="top"></div>
+          <div class="chain"><span></span><span></span></div>
+          <div class="slot" id="slot"><span class="slotHint">drop here</span></div>
+          <div class="chain"><span></span><span></span></div>
+          <div class="sent" id="bottom"></div>
+          <div class="chain end"><span></span><span></span><span></span></div>
+        </div>
+        <div class="tray" id="tray"></div>
+      </div>
+      <div class="info" id="info"></div>
+      <div class="actions"><button class="next" id="next" disabled>Next</button></div>
+    </section>
+
+    <section id="editView" hidden>
+      <div class="toolbar">
+        <button class="btn primary" id="addQ">+ Add question</button>
+        <span class="status" id="saveState">Changes save automatically</span>
+      </div>
+      <div class="msgbar" id="editMsg" role="status"></div>
+      <div class="panel">
+        <h2>Questions</h2>
+        <div id="qList"></div>
+        <button class="btn addwide" id="addQ2">+ Add question</button>
+      </div>
+      <div class="panel">
+        <h2>Conjunctions</h2>
+        <p class="muted">These are the pieces students can drag. Add your own and describe what they do.</p>
+        <div class="addrow"><input id="newConj" placeholder="New conjunction, e.g. unless"><button class="btn" id="addConj">+ Add conjunction</button></div>
+        <div id="cList"></div>
+      </div>
+      <details class="panel backup">
+        <summary>Backup, restore &amp; share</summary>
+        <p class="muted">Edits are saved in this browser only. Copy the text below to move them to another device, or into <code>js/data.js</code>.</p>
+        <div class="btnrow">
+          <button class="btn" id="showJson">Show as JSON</button>
+          <button class="btn" id="showJs">Show as data.js</button>
+          <button class="btn" id="importBtn">Import JSON</button>
+          <button class="btn danger" id="resetBtn">Reset to defaults</button>
+        </div>
+        <textarea id="backupText" rows="8" spellcheck="false" placeholder="Paste JSON here to import"></textarea>
+        <div class="muted" id="backupMsg"></div>
+      </details>
+    </section>
+  </main>
+  <script>
+/* Content: conjunctions and questions. Edit this file to change the lessons. */
+// ===== Teacher: edit conjunctions and questions here =====
+const CONJ = {
+  "and":{use:"Adds more information.",syn:"also, as well as, plus"},
+  "but":{use:"Shows a contrast (something different).",syn:"however, yet"},
+  "or":{use:"Shows a choice or alternative.",syn:"otherwise, either … or"},
+  "so":{use:"Shows a result.",syn:"therefore, as a result, thus"},
+  "because":{use:"Shows a reason.",syn:"since, as, due to"},
+  "since":{use:"Shows a reason (like “because”).",syn:"because, as"},
+  "although":{use:"Shows an unexpected contrast.",syn:"though, even though"},
+  "though":{use:"Shows an unexpected contrast.",syn:"although, even though"},
+  "yet":{use:"Shows a surprising contrast.",syn:"but, however"},
+  "therefore":{use:"Shows a result.",syn:"so, as a result"},
+  "otherwise":{use:"Shows what happens if you don’t do something.",syn:"or, or else"},
+  "while":{use:"Shows two things happening at the same time.",syn:"and, whereas"}
+};
+const QUESTIONS = [
+  {top:"I was very tired",bottom:"I went to bed early",answer:["so","therefore"]},
+  {top:"I like tea",bottom:"I don’t like coffee",answer:["but","yet"]},
+  {top:"Hurry up",bottom:"you will miss the bus",answer:["or","otherwise"]},
+  {top:"She stayed at home",bottom:"she was sick",answer:["because","since"]},
+  {top:"Tom is playing football",bottom:"Anna is reading a book",answer:["and","while"]},
+  {top:"We played football",bottom:"it was raining",answer:["although","though"]}
+];
+
+/* Persistence: teacher edits are kept in this browser (localStorage) and override the defaults in data.js. */
+const Store = {
+  KEY: "conjunctionChain.v1",
+  replace(d) {
+    Object.keys(CONJ).forEach(k => delete CONJ[k]);
+    Object.assign(CONJ, d.conj);
+    QUESTIONS.length = 0;
+    QUESTIONS.push(...d.questions);
+  },
+  save() {
+    try { localStorage.setItem(this.KEY, JSON.stringify({ conj: CONJ, questions: QUESTIONS })); return true; }
+    catch (e) { return false; }
+  },
+  reset() { try { localStorage.removeItem(this.KEY); } catch (e) {} },
+  restore() {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d && d.conj && Array.isArray(d.questions) && d.questions.length) this.replace(d);
+    } catch (e) {}
+  }
+};
+Store.restore();
+
+/* Game logic: drag-and-plug behaviour, feedback and progress. Needs data.js loaded first. */
+const $=id=>document.getElementById(id);
+const slot=$("slot");
+let q=0,found,plugged,wrong=0,tries=0;
+const shuffle=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
+
+function load(){
+  const Q=QUESTIONS[q];
+  found=new Set();plugged=null;tries=0;
+  $("top").textContent=Q.top+"…";
+  $("bottom").textContent="…"+Q.bottom+".";
+  $("progress").textContent="Question "+(q+1)+" of "+QUESTIONS.length;
+  $("pbar").style.width=(q/QUESTIONS.length*100)+"%";
+  $("tries").textContent="";
+  slot.className="slot";
+  slot.querySelectorAll(".piece").forEach(p=>p.remove());
+  const tray=$("tray");tray.innerHTML="";
+  shuffle(Object.keys(CONJ)).forEach(w=>{
+    const cell=document.createElement("div");cell.className="cell";
+    const p=document.createElement("div");p.className="piece";p.textContent=w;p.dataset.w=w;
+    p.style.setProperty("--rot",(Math.random()*12-6).toFixed(1)+"deg");
+    p.style.setProperty("--h",(Object.keys(CONJ).indexOf(w)*31)%360);
+    p.home=cell;p.addEventListener("pointerdown",startDrag);
+    cell.appendChild(p);tray.appendChild(cell);
+  });
+  $("next").disabled=true;
+  $("next").textContent=q===QUESTIONS.length-1?"Finish":"Next";
+  info();
+}
+function info(msg){
+  const Q=QUESTIONS[q],n=Q.answer.length;
+  let h="";
+  if(msg) h+='<div class="row bad">'+msg+'</div>';
+  if(plugged){
+    const c=CONJ[plugged.dataset.w];
+    // Never reveal the other correct answers in the "similar words" hint
+    const syn=c.syn.split(",").map(s=>s.trim()).filter(s=>s&&!Q.answer.includes(s));
+    h+='<div class="row"><b class="ok">✓ '+plugged.dataset.w+'</b> — '+c.use+'</div>';
+    if(syn.length) h+='<div class="row">Similar words: <i>'+syn.join(", ")+'</i></div>';
+  }else if(!msg){
+    h+='<div class="row">Which conjunction fits? Drag a piece into the gap.</div>';
+  }
+  h+='<div class="found">'+(n>1?"This question has "+n+" correct answers. ":"")+"Found: "+found.size+" / "+n+(found.size?" ("+[...found].join(", ")+")":"")+'</div>';
+  $("info").innerHTML=h;
+  $("next").disabled=found.size<n;
+}
+function setStyle(p,o){for(const k in o)p.style[k]=o[k];}
+function place(p,dest,from){
+  ["position","left","top","width","height","zIndex","transform"].forEach(k=>p.style.removeProperty(k.replace(/[A-Z]/g,m=>"-"+m.toLowerCase())));
+  p.classList.remove("drag");
+  dest.appendChild(p);
+  const to=p.getBoundingClientRect();
+  p.style.transition="none";
+  p.style.transform="translate("+(from.left-to.left)+"px,"+(from.top-to.top)+"px)";
+  p.offsetWidth;
+  p.style.transition="";
+  p.style.transform="";
+}
+function startDrag(e){
+  e.preventDefault();
+  const p=e.currentTarget,r=p.getBoundingClientRect(),ox=e.clientX-r.left,oy=e.clientY-r.top;
+  if(p.parentElement===slot){plugged=null;slot.classList.remove("ok");info();}
+  setStyle(p,{position:"fixed",left:r.left+"px",top:r.top+"px",width:r.width+"px",height:r.height+"px",zIndex:50,transform:"scale(1.06)"});
+  p.classList.add("drag");
+  p.setPointerCapture(e.pointerId);
+  const move=ev=>{p.style.left=ev.clientX-ox+"px";p.style.top=ev.clientY-oy+"px";};
+  const up=ev=>{
+    p.removeEventListener("pointermove",move);p.removeEventListener("pointerup",up);p.removeEventListener("pointercancel",up);
+    const from=p.getBoundingClientRect(),s=slot.getBoundingClientRect(),m=30;
+    const inside=ev.clientX>s.left-m&&ev.clientX<s.right+m&&ev.clientY>s.top-m&&ev.clientY<s.bottom+m;
+    const w=p.dataset.w;
+    if(inside){
+      tries++;$("tries").textContent="Tries: "+tries;
+      if(QUESTIONS[q].answer.includes(w)){
+        if(plugged&&plugged!==p){place(plugged,plugged.home,plugged.getBoundingClientRect());}
+        plugged=p;found.add(w);
+        place(p,slot,from);slot.classList.add("ok");info();return;
+      }
+      wrong++;
+      p.classList.add("bad");setTimeout(()=>p.classList.remove("bad"),600);
+      slot.classList.add("flash");setTimeout(()=>slot.classList.remove("flash"),500);
+      place(p,p.home,from);
+      info("✗ “"+w+"” doesn’t fit here. Try another piece!");
+      return;
+    }
+    place(p,p.home,from);
+    info();
+  };
+  p.addEventListener("pointermove",move);p.addEventListener("pointerup",up);p.addEventListener("pointercancel",up);
+}
+$("next").onclick=()=>{
+  if(q<QUESTIONS.length-1){q++;load();return;}
+  $("stage").innerHTML='<div class="done"><h2>Well done! 🎉</h2><p>You completed all '+QUESTIONS.length+' questions with '+wrong+' wrong attempt'+(wrong===1?"":"s")+'.</p></div>';
+  $("info").remove();$("next").textContent="Play again";$("next").disabled=false;$("next").onclick=()=>location.reload();
+};
+load();
+/* Editor view: add, edit, reorder and delete questions and conjunctions. Autosaves via Store. */
+(function () {
+  const $ = id => document.getElementById(id);
+  const qList = $("qList"), cList = $("cList");
+  let dirty = false;
+
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const say = (t, good) => { const m = $("editMsg"); m.textContent = t || ""; m.className = "msgbar" + (t ? (good ? " good" : " warn") : ""); };
+  function changed() {
+    dirty = true;
+    $("saveState").textContent = Store.save() ? "Saved ✓" : "Couldn’t save in this browser (storage is blocked)";
+  }
+  // Two-step button: first click arms it ("Sure?"), second click runs the action.
+  function confirmClick(btn, fn) {
+    if (btn.dataset.armed) { fn(); return; }
+    btn.dataset.armed = "1";
+    const t = btn.textContent; btn.textContent = "Sure?";
+    setTimeout(() => { delete btn.dataset.armed; btn.textContent = t; }, 2500);
+  }
+
+  function renderQ() {
+    const words = Object.keys(CONJ);
+    qList.innerHTML = QUESTIONS.map((Q, i) => `
+      <div class="qcard" data-i="${i}">
+        <div class="qhead"><b>Question ${i + 1}</b>
+          <span class="qtools">
+            <button class="icon" data-act="up" title="Move up" ${i ? "" : "disabled"}>↑</button>
+            <button class="icon" data-act="down" title="Move down" ${i < QUESTIONS.length - 1 ? "" : "disabled"}>↓</button>
+            <button class="icon danger" data-act="del" title="Delete question">🗑</button>
+          </span></div>
+        <label>First sentence<input data-f="top" value="${esc(Q.top)}" placeholder="e.g. I was very tired"></label>
+        <label>Second sentence<input data-f="bottom" value="${esc(Q.bottom)}" placeholder="e.g. I went to bed early"></label>
+        <div class="lbl">Correct conjunctions (tap to select, one or more)</div>
+        <div class="chips">${words.map(w => `<button class="chip${Q.answer.includes(w) ? " on" : ""}" data-act="ans" data-w="${esc(w)}">${esc(w)}</button>`).join("")}</div>
+      </div>`).join("") || '<p class="empty">No questions yet. Tap “+ Add question”.</p>';
+  }
+  function renderC() {
+    cList.innerHTML = Object.entries(CONJ).map(([w, c]) => `
+      <div class="ccard" data-w="${esc(w)}">
+        <div class="qhead"><b>${esc(w)}</b><button class="icon danger" data-act="delc" title="Delete conjunction">🗑</button></div>
+        <label>What it does<input data-f="use" value="${esc(c.use)}"></label>
+        <label>Similar words (comma separated)<input data-f="syn" value="${esc(c.syn)}"></label>
+      </div>`).join("");
+  }
+  const renderAll = () => { renderQ(); renderC(); };
+
+  qList.addEventListener("click", e => {
+    const b = e.target.closest("button[data-act]"); if (!b) return;
+    const i = +b.closest(".qcard").dataset.i, act = b.dataset.act;
+    if (act === "del") { confirmClick(b, () => { QUESTIONS.splice(i, 1); changed(); renderQ(); }); return; }
+    if (act === "up" || act === "down") {
+      const j = act === "up" ? i - 1 : i + 1;
+      [QUESTIONS[i], QUESTIONS[j]] = [QUESTIONS[j], QUESTIONS[i]]; changed(); renderQ(); return;
+    }
+    if (act === "ans") {
+      const a = QUESTIONS[i].answer, k = a.indexOf(b.dataset.w);
+      if (k < 0) a.push(b.dataset.w); else a.splice(k, 1);
+      changed(); renderQ();
+    }
+  });
+  qList.addEventListener("input", e => {
+    const f = e.target.dataset.f; if (!f) return;
+    QUESTIONS[+e.target.closest(".qcard").dataset.i][f] = e.target.value;
+    e.target.classList.remove("invalid"); changed();
+  });
+  cList.addEventListener("click", e => {
+    const b = e.target.closest("button[data-act=delc]"); if (!b) return;
+    const w = b.closest(".ccard").dataset.w;
+    confirmClick(b, () => {
+      delete CONJ[w];
+      QUESTIONS.forEach(Q => { Q.answer = Q.answer.filter(a => a !== w); });
+      changed(); renderAll();
+    });
+  });
+  cList.addEventListener("input", e => {
+    const f = e.target.dataset.f; if (!f) return;
+    CONJ[e.target.closest(".ccard").dataset.w][f] = e.target.value; changed();
+  });
+
+  function addQuestion() {
+    QUESTIONS.push({ top: "", bottom: "", answer: [] });
+    changed(); renderQ(); say("");
+    const card = qList.lastElementChild;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.querySelector("input").focus({ preventScroll: true });
+  }
+  function addConj() {
+    const inp = $("newConj"), w = inp.value.trim().toLowerCase();
+    if (!w) return say("Type the conjunction first.");
+    if (CONJ[w]) return say("“" + w + "” already exists.");
+    CONJ[w] = { use: "Explain what it does.", syn: "" };
+    inp.value = ""; changed(); renderAll();
+    say("Added “" + w + "”. Write its explanation below.", true);
+  }
+  $("addQ").onclick = addQuestion; $("addQ2").onclick = addQuestion;
+  $("addConj").onclick = addConj;
+  $("newConj").addEventListener("keydown", e => { if (e.key === "Enter") addConj(); });
+
+  // Backup / restore / share
+  const box = $("backupText"), bmsg = $("backupMsg");
+  $("showJson").onclick = () => { box.value = JSON.stringify({ conj: CONJ, questions: QUESTIONS }, null, 2); box.select(); bmsg.textContent = "Copy this text to keep a backup."; };
+  $("showJs").onclick = () => { box.value = "const CONJ = " + JSON.stringify(CONJ, null, 2) + ";\n\nconst QUESTIONS = " + JSON.stringify(QUESTIONS, null, 2) + ";\n"; box.select(); bmsg.textContent = "Paste this into js/data.js to make the changes permanent."; };
+  $("importBtn").onclick = () => {
+    try {
+      const d = JSON.parse(box.value);
+      const ok = d && d.conj && typeof d.conj === "object" && Array.isArray(d.questions) &&
+        d.questions.every(Q => typeof Q.top === "string" && typeof Q.bottom === "string" && Array.isArray(Q.answer));
+      if (!ok) throw new Error("shape");
+      Store.replace(d); changed(); renderAll(); bmsg.textContent = "Imported ✓";
+    } catch (err) { bmsg.textContent = "That doesn’t look like valid JSON from this editor."; }
+  };
+  $("resetBtn").onclick = e => confirmClick(e.currentTarget, () => { Store.reset(); location.reload(); });
+
+  function validate() {
+    if (!QUESTIONS.length) { say("Add at least one question first."); return false; }
+    let first = null;
+    QUESTIONS.forEach((Q, i) => {
+      Q.top = Q.top.trim(); Q.bottom = Q.bottom.trim();
+      const bad = !Q.top || !Q.bottom || !Q.answer.length;
+      qList.children[i].classList.toggle("invalid", bad);
+      if (bad && !first) first = qList.children[i];
+    });
+    if (first) {
+      first.scrollIntoView({ behavior: "smooth", block: "center" });
+      say("Fill in both sentences and pick at least one correct conjunction in the highlighted question(s).");
+      return false;
+    }
+    Store.save(); return true;
+  }
+  function show(view) {
+    const edit = view === "edit";
+    $("playView").hidden = edit; $("editView").hidden = !edit;
+    $("tabPlay").classList.toggle("active", !edit); $("tabEdit").classList.toggle("active", edit);
+    $("subTitle").textContent = edit ? "Add, change or delete questions. Changes save automatically." : "Drag a conjunction piece into the gap to connect the two sentences.";
+    if (edit) { renderAll(); say(""); }
+  }
+  $("tabEdit").onclick = () => show("edit");
+  $("tabPlay").onclick = () => {
+    if ($("editView").hidden) return;
+    if (!validate()) return;
+    if (dirty) location.reload(); else show("play");
+  };
+})();
+
+</script>
+</body>
+</html>
